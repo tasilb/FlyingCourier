@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 
 import rospy
 from flyco.ar_tag_follower import ARTagFollower
