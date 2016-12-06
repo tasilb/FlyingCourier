@@ -36,6 +36,9 @@ class ARPoseEstimator:
 		tagRBT = self._return_rbt(trans, self._zero_rotation)
 		self._tagRBTs[self._coord2Tag[i, j], :, :] = tagRBT
 
+	self._tf_sub = rospy.Subscriber('/tf', tf.TFMessage, on_tf, queue_size=1)
+	self._mocap_pub = rospy.Publisher('/mavros/mocap/pose', PoseStamped, queue_size=1)
+
     # estimation cycle
     def run(self):
 	estimationRate = rospy.Rate(10.0)
@@ -45,6 +48,9 @@ class ARPoseEstimator:
 
 
     def _estimate_pose(self):
+	estimatedPose = PoseStamped()
+	estimatedPose.header.stamp = rospy.Time.now()
+	estimatedPose.header.frame_id = 'grid_origin'
 	# lock and copy, then unlock
 	self._rbt_status_lock.acquire()
 	lastRbtUpdateTimeSnapshot = np.copy(self._lastRbtUpdateTime)
@@ -61,8 +67,18 @@ class ARPoseEstimator:
 	# normalize RBTs?
 	rbtsInWindow = lastKnownRbtSnapshot[indicesInWindow]
 	# assuming all rotations are same, relies on dropout
-	
+	avgTrans = np.average(rbtsInWindow)[:, 3][:3]
+	avgRot = tf.transformations.rotation_from_matrix(rbtsInWindow[0])
+	avgRot = tf.transformations.quaternion_about_axis(avgRot[0], avgRot[1])
 	# publish pose based on origin and regularized RBT
+	estimatedPose.pose.position.x = avgTrans[0]
+	estimatedPose.pose.position.y = avgTrans[1]
+	estimatedPose.pose.position.z = avgTrans[2]
+	estimatedPose.pose.orientation.x = avgRot[0]
+	estimatedPose.pose.orientation.y = avgRot[1]
+	estimatedPose.pose.orientation.z = avgRot[2]
+	estimatedPose.pose.orientation.w = avgRot[3]
+	self._mocap_pub.publish(estimatedPose)
 
     # cb on ar_track_alvar tf
     def _on_tf(msg):
