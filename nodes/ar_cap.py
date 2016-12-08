@@ -55,7 +55,7 @@ class ARPoseEstimator:
     def _estimate_pose(self):
 	estimatedPose = PoseStamped()
 	estimatedPose.header.stamp = rospy.Time.now()
-	estimatedPose.header.frame_id = 'origin'
+	estimatedPose.header.frame_id = 'fcu'
 	# lock and copy, then unlock
 	self._rbt_status_lock.acquire()
 	lastRbtUpdateTimeSnapshot = np.copy(self._lastRbtUpdateTime)
@@ -91,6 +91,7 @@ class ARPoseEstimator:
 	    estimatedPose.pose.orientation.z = avgQuat[2]
 	    estimatedPose.pose.orientation.w = avgQuat[3]
             print("TRANS", avgTrans[0], avgTrans[1], avgTrans[2])
+            print("ROT", np.array(tf.transformations.euler_from_quaternion(avgQuat)) * 180 / np.pi)
     
 	    self._mocap_pub.publish(estimatedPose)
 	else:
