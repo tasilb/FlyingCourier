@@ -22,7 +22,7 @@ class ARPoseEstimator:
 	self._rbt_status_lock = Lock()
         self.timeWindowSize = timeWindowSize
         self.timeout = timeout
-        self.freuency = frequency
+        self.frequency = frequency
 
 	# cache RBT from usb_cam to fcu
 	self._tfListener = tf.TransformListener()
