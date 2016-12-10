@@ -1,7 +1,8 @@
 #! /usr/bin/env python
+
 import rospy
 from geometry_msgs.msg import PoseStamped
-from mavros_msgs.msg import State
+from flyco.msg import FlycoStatus, FlycoCmd
 from mavros_msgs.srv import SetMode
 import numpy as np
 
@@ -16,20 +17,18 @@ class IndoorSafetyMonitor:
 	self._current_mode = None
 	self._last_position = None
 
-	self._position_sub = rospy.Subscriber("/mavros/local_position/pose", PoseStamped, self._on_pose)
-	self._mavros_state_sub = rospy.Subscriber("/mavros/state", State, self._on_state)
+        self._flyco_status_sub = rospy.Subscriber("/flyco/main_status", FlycoStatus, self._on_status)
+        self._flyco_cmd_pub = rospy.Publisher("/flyco/cmd", FlycoCmd, queue_size=1)
 	rospy.wait_for_service("/mavros/set_mode")
 	self._set_mode_client = rospy.ServiceProxy("/mavros/set_mode", SetMode)
 	self._rate = rospy.Rate(10)
 
-    def _on_pose(self, msg):
-	msgPos = msg.pose.position
+    def _on_status(self, msg):
+	self._current_mode = msg.mavros_state.mode
+	msgPos = msg.local_pose.pose.position
 	currentPosition = np.array([msgPos.x, msgPos.y, msgPos.z, msg.header.stamp])
 	self._validate_position_safety(currentPosition)
 	self._last_position = currentPosition
-    
-    def _on_state(self, msg):
-	self._current_mode = msg.mode
 
     def _validate_position_safety(self, currentPosition):
 	positionOk = self._in_position_bounds(currentPosition) and self._in_differential_bounds(currentPosition)
@@ -61,6 +60,9 @@ class IndoorSafetyMonitor:
 
     def _enter_failsafe(self):
 	rospy.log("[IndoorSafetyMonitor] Entering failsafe mode {}".format(self._failsafe_mode))
+        cmd = FlycoCmd()
+        cmd.cmd = FlycoCmd.CMD_FAILSAFE
+        self._flyco_cmd_pub.publish(cmd)
 	while self._current_mode != self._failsafe_mode:
 	    self._set_mode_client(custom_mode=self._failsafe_mode)
 	    self._rate.sleep()
