@@ -51,6 +51,7 @@ add_message_files(
   FILES
   FlycoStatus.msg
   FlycoCmd.msg
+  FlycoPath.msg
 )
 
 ## Generate services in the 'srv' folder

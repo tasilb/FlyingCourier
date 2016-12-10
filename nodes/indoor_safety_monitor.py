@@ -63,8 +63,8 @@ class IndoorSafetyMonitor:
 	rospy.loginfo("[IndoorSafetyMonitor] Entering failsafe mode {}".format(self._failsafe_mode))
         cmd = FlycoCmd()
         cmd.cmd = FlycoCmd.CMD_FAILSAFE
-        self._flyco_cmd_pub.publish(cmd)
 	while self._current_mode != self._failsafe_mode:
+            self._flyco_cmd_pub.publish(cmd)
 	    self._set_mode_client(custom_mode=self._failsafe_mode)
 	    self._rate.sleep()
 	rospy.spin()
