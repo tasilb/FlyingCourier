@@ -2,16 +2,16 @@
 
 import rospy
 from flyco.msg import FlycoStatus, FlycoCmd
-from mavros_msgs.msg import State, BatteryState
+from mavros_msgs.msg import State, BatteryStatus
 from geometry_msgs.msg import PoseStamped
 
 class FlycoBaseNode:
     def __init__(self):
         self._status = FlycoStatus()
-        self._status.status = FlycoStatus.STATE_INIT
+        self._status.status = FlycoStatus.STATUS_INIT
         self._publish_rate = rospy.Rate(50)
         self._mavros_state_sub = rospy.Subscriber("/mavros/state", State, self._on_state)
-        self._battery_sub = rospy.Subscriber("/mavros/battery", BatteryState, self._on_battery)
+        self._battery_sub = rospy.Subscriber("/mavros/battery", BatteryStatus, self._on_battery)
         self._local_position_sub = rospy.Subscriber("/mavros/local_position/pose", PoseStamped, self._on_pose)
         self._cmd_sub = rospy.Subscriber("/flyco/cmd", FlycoCmd, self._on_cmd)
         self._status_pub = rospy.Publisher("/flyco/main_status", FlycoStatus, queue_size=1)
@@ -35,7 +35,7 @@ class FlycoBaseNode:
         cmdType = msg.cmd
         if self._status.status == FlycoStatus.STATUS_FAULT:
             rospy.loginfo("[FlycoBase] Currently in fault state, command rejected.")
-            break
+            return
         elif cmdType == FlycoCmd.CMD_FAILSAFE:
             rospy.loginfo("[FlycoBase] Entering fault mode.")
             self._status.status = FlycoStatus.STATUS_FAULT

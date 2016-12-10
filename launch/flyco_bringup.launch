@@ -1,0 +1,14 @@
+<launch>
+
+  <node name="flyco_base_node" pkg="flyco" type="flyco_base_node.py"  output="screen" />
+
+  <node name="flyco_indoor_safety_monitor" pkg="flyco" type="indoor_safety_monitor.py"  output="screen" />
+
+  <node name="flyco_flight_mode_manager" pkg="flyco" type="flight_mode_manager.py"  output="screen" />
+
+  <node name="flyco_setpoint_manager" pkg="flyco" type="setpoint_manager.py"  output="screen" />
+
+  <node name="flyco_path_manager" pkg="flyco" type="path_manager.py"  output="screen" />
+
+</launch>
+

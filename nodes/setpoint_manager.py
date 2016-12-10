@@ -9,6 +9,7 @@ class SetpointManager:
         self._flyco_status_sub = rospy.Subscriber("/flyco/main_status", FlycoStatus, self._on_status, queue_size=1)
         self._setp_pos_pub = rospy.Publisher("/mavros/setpoint_position/local", PoseStamped, queue_size=1)
         self._setpoint_rate = rospy.Rate(10)
+	self._setpoint_type = None
         rospy.loginfo("[SetpointManager] SetpointManager initialized!")
             
     def _on_status(self, msg):
@@ -17,7 +18,7 @@ class SetpointManager:
 
     def run(self):
         while not rospy.is_shutdown():
-            if self._setpoint_type == FlycoStatus.SETPOINT_POS:
+            if self._setpoint_type is not None and self._setpoint_type == FlycoStatus.STATUS_SETPOINT_NAV:
                 self._setp_pos_pub.publish(self._setpoint)
             self._setpoint_rate.sleep()
 

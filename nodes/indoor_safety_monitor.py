@@ -17,17 +17,19 @@ class IndoorSafetyMonitor:
 	self._current_mode = None
 	self._last_position = None
 
-        self._flyco_status_sub = rospy.Subscriber("/flyco/main_status", FlycoStatus, self._on_status)
-        self._flyco_cmd_pub = rospy.Publisher("/flyco/cmd", FlycoCmd, queue_size=1)
+	rospy.loginfo("[IndoorSafetyMonitor] Waiting for service /mavros/set_mode to become available...")
 	rospy.wait_for_service("/mavros/set_mode")
 	self._set_mode_client = rospy.ServiceProxy("/mavros/set_mode", SetMode)
+        self._flyco_status_sub = rospy.Subscriber("/flyco/main_status", FlycoStatus, self._on_status)
+        self._flyco_cmd_pub = rospy.Publisher("/flyco/cmd", FlycoCmd, queue_size=1)
 	self._rate = rospy.Rate(10)
         rospy.loginfo("[IndoorSafetyMonitor] IndoorSafetyMonitor initialized!")
 
     def _on_status(self, msg):
 	self._current_mode = msg.mavros_state.mode
 	msgPos = msg.local_pose.pose.position
-	currentPosition = np.array([msgPos.x, msgPos.y, msgPos.z, msg.header.stamp])
+	msgPosStamp = msg.local_pose.header.stamp
+	currentPosition = np.array([msgPos.x, msgPos.y, msgPos.z, msgPosStamp.to_sec()])
 	self._validate_position_safety(currentPosition)
 	self._last_position = currentPosition
 
@@ -47,14 +49,14 @@ class IndoorSafetyMonitor:
     def _in_differential_bounds(self, position):
 	if self._last_position is not None:
 
-            rawDifferential = (position[:3] - self._last_position[:3]) / (position[3] - self.last_position[3])
+            rawDifferential = (position[:3] - self._last_position[:3]) / (position[3] - self._last_position[3])
             self._current_differential = self._alpha * self._current_differential + (1 - self._alpha) * rawDifferential
-	    validDifferentials = abs(self.current_differential) < self._max_differential
+	    validDifferentials = abs(self._current_differential) < self._max_differential
 	    differentialInBounds = np.sum(validDifferentials) == 3
 	    
             if not differentialInBounds:
                 rospy.loginfo("[IndoorSafetyMonitor] Detected excessive position differential: {0} maximum differential: {1}"\
-                          .format(self.current_differential, self._max_differential))
+                          .format(self._current_differential, self._max_differential))
 	    return differentialInBounds
 	else:
 	    return True

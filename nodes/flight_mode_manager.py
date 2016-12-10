@@ -6,12 +6,13 @@ from flyco.msg import FlycoStatus
 
 class FlightModeManager:
     def __init__(self):
-        self._flyco_status_sub = rospy.Subscriber('/flyco/main_status', FlycoStatus, self._on_state, queue_size=1)
         self._current_mode = None
         self._desired_mode = None
+	rospy.loginfo("[FlightModeManager] Waiting for service /mavros/set_mode to become available...")
         rospy.wait_for_service('/mavros/set_mode')
         self._set_mode_client = rospy.ServiceProxy('/mavros/set_mode', SetMode)
         self._resend_rate = rospy.Rate(10)
+        self._flyco_status_sub = rospy.Subscriber('/flyco/main_status', FlycoStatus, self._on_state, queue_size=1)
         rospy.loginfo("[FlightModeManager] FlightModeManager initialized!")
 
     def _on_state(self, msg):

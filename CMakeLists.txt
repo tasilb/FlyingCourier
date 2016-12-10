@@ -20,7 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
 # Uncomment this if the package has a setup.py. This macro ensures
 # modules and global scripts declared therein get installed
 # See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
- catkin_python_setup()
+catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -123,18 +123,10 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-## Declare a C++ library
-# add_library(flyco
-#   src/${PROJECT_NAME}/flyco.cpp
-# )
-
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
 # add_dependencies(flyco ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Declare a C++ executable
-# add_executable(flyco_node src/flyco_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -154,10 +146,16 @@ include_directories(
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# install(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(PROGRAMS
+  nodes/airframe_tf_broadcaster.py
+  nodes/ar_cap.py
+  nodes/flight_mode_manager.py
+  nodes/flyco_base_node.py
+  nodes/indoor_safety_monitor.py
+  nodes/path_manager.py
+  nodes/setpoint_manager.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables and/or libraries for installation
 # install(TARGETS flyco flyco_node

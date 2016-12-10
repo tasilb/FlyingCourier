@@ -19,6 +19,7 @@ class PathManager:
         self._flyco_cmd_pub = rospy.Publisher("/flyco/cmd", FlycoCmd, queue_size=1)
         self._flyco_path_sub = rospy.Subscriber("/flyco/path", FlycoPath, self._on_path)
         self._flyco_status_sub = rospy.Subscriber("/flyco/main_status", FlycoStatus, self._on_status)
+	rospy.loginfo("[PathManager] PathManager initialized!")
 
     def _on_path(self, msg):
         rospy.loginfo("[PathManager] New path received!")
