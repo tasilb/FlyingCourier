@@ -55,17 +55,16 @@ class ARPoseEstimator:
     def _estimate_pose(self):
 	estimatedPose = PoseStamped()
 	estimatedPose.header.stamp = rospy.Time.now()
-	estimatedPose.header.frame_id = 'fcu'
+	estimatedPose.header.frame_id = 'ar_grid'
 	# lock and copy, then unlock
-	self._rbt_status_lock.acquire()
+	# self._rbt_status_lock.acquire()
 	lastRbtUpdateTimeSnapshot = np.copy(self._lastRbtUpdateTime)
 	lastKnownRbtSnapshot = np.copy(self._lastKnownRbt)
-	self._rbt_status_lock.release()
+	# self._rbt_status_lock.release()
 
 	# filter indices by timestamp
 	minStamp = self._tfListener.getLatestCommonTime('fcu', 'usb_cam').to_sec() - self.timeWindowSize
 	indicesInWindow = np.where(lastRbtUpdateTimeSnapshot >= minStamp)[0]
-	print("Filtering over {} transforms".format(len(indicesInWindow)))
 
 	# drop outliers and average
 	# skipping outlier cleaning for now
@@ -74,6 +73,7 @@ class ARPoseEstimator:
 	
         # assuming all rotations are same, relies on dropout
 	if len(rbtsInWindow) > 0:
+	    print("Filtering over {} transforms".format(len(indicesInWindow)))
 	    avgTrans = np.average(rbtsInWindow, axis=0)[:, 3][:3]
             avgQuat = np.zeros(4)
             for rbt in rbtsInWindow:
@@ -114,10 +114,10 @@ class ARPoseEstimator:
 		rbt = self._tagToOriginRBTs[tagId].dot(tfRbt).dot(self._camTofcuRBT) 
 
    		# update tag's latest timestamp and last known RBT
-		self._rbt_status_lock.acquire()
+		# self._rbt_status_lock.acquire()
 		self._lastRbtUpdateTime[tagId] = stamp
 		self._lastKnownRbt[tagId, :, :] = rbt
-		self._rbt_status_lock.release()
+		# self._rbt_status_lock.release()
 
     def _return_rbt(self, trans, rot):
 	omega, theta = eqf.quaternion_to_exp(rot)

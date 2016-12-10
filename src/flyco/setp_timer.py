@@ -6,9 +6,10 @@ from mavros_msgs.srv import SetMode
 from datetime import datetime
 
 class SetpointTimer:
-    def __init__(self, setpoint, setpointType, timeToPublishSetpointInSeconds, nextSetpointTimer=None):
+    def __init__(self, setpoint, setpointType, timeToPublishSetpointInSeconds, endingMode='AUTO.LAND', nextSetpointTimer=None):
         self._time_to_publish_setpoint_in_seconds = timeToPublishSetpointInSeconds
         self._setpoint = setpoint
+	self._ending_mode = endingMode
         self._mavros_state_sub = rospy.Subscriber('/mavros/state', State, self._on_state, queue_size=1)
         self._current_mode = None
 
@@ -33,6 +34,9 @@ class SetpointTimer:
     def _on_state(self, msg):
         self._current_mode = msg.mode
 
+    def set_next_setpoint_timer(self, nextSetpointTimer):
+	self._next_setpoint_timer = nextSetpointTimer
+
     def start_timer(self):
 	timerStart = datetime.now()
         while (datetime.now() - timerStart).total_seconds() < self._time_to_publish_setpoint_in_seconds:
@@ -41,9 +45,9 @@ class SetpointTimer:
                 self._set_mode_client(custom_mode='OFFBOARD')
             rospy.sleep(0.1)
 	if self._next_setpoint_timer is not None:
-	    self._next_setpoint_timer.startTimer()
+	    self._next_setpoint_timer.start_timer()
 	else:
-	    while self._current_mode != 'AUTO.LAND':
-		self._set_mode_client(custom_mode='AUTO.LAND')
+	    while self._current_mode != self._ending_mode:
+		self._set_mode_client(custom_mode=self._ending_mode)
 		rospy.sleep(0.1)
 
