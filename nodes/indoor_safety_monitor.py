@@ -22,6 +22,7 @@ class IndoorSafetyMonitor:
 	rospy.wait_for_service("/mavros/set_mode")
 	self._set_mode_client = rospy.ServiceProxy("/mavros/set_mode", SetMode)
 	self._rate = rospy.Rate(10)
+        rospy.loginfo("[IndoorSafetyMonitor] IndoorSafetyMonitor initialized!")
 
     def _on_status(self, msg):
 	self._current_mode = msg.mavros_state.mode
@@ -39,7 +40,7 @@ class IndoorSafetyMonitor:
         positionInBounds = np.sum(position[:3] >= self._corner1) + \
                            np.sum(position[:3] <= self._corner2) == 6
 	if not positionInBounds:
-            rospy.log("[IndoorSafetyMonitor] Local position is outside of safety area: {0} corner one: {1} corner 2: {2}."\
+            rospy.loginfo("[IndoorSafetyMonitor] Local position is outside of safety area: {0} corner one: {1} corner 2: {2}."\
                       .format(position[:3], self._corner1, self._corner2))
 	return positionInBounds
 
@@ -52,14 +53,14 @@ class IndoorSafetyMonitor:
 	    differentialInBounds = np.sum(validDifferentials) == 3
 	    
             if not differentialInBounds:
-                rospy.log("[IndoorSafetyMonitor] Detected excessive position differential: {0} maximum differential: {1}"\
+                rospy.loginfo("[IndoorSafetyMonitor] Detected excessive position differential: {0} maximum differential: {1}"\
                           .format(self.current_differential, self._max_differential))
 	    return differentialInBounds
 	else:
 	    return True
 
     def _enter_failsafe(self):
-	rospy.log("[IndoorSafetyMonitor] Entering failsafe mode {}".format(self._failsafe_mode))
+	rospy.loginfo("[IndoorSafetyMonitor] Entering failsafe mode {}".format(self._failsafe_mode))
         cmd = FlycoCmd()
         cmd.cmd = FlycoCmd.CMD_FAILSAFE
         self._flyco_cmd_pub.publish(cmd)

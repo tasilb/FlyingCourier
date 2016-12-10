@@ -12,6 +12,7 @@ class FlightModeManager:
         rospy.wait_for_service('/mavros/set_mode')
         self._set_mode_client = rospy.ServiceProxy('/mavros/set_mode', SetMode)
         self._resend_rate = rospy.Rate(10)
+        rospy.loginfo("[FlightModeManager] FlightModeManager initialized!")
 
     def _on_state(self, msg):
         self._current_mode = msg.mavros_state.mode
@@ -26,7 +27,7 @@ class FlightModeManager:
 
     def _mavros_set_state(self):
 	while self._current_mode != self._desired_mode:
-            rospy.log("[FlightModeManager] Requesting mode switch ({} to {})".format(self._current_mode, self._desired_mode))
+            rospy.loginfo("[FlightModeManager] Requesting mode switch ({} to {})".format(self._current_mode, self._desired_mode))
 	    self._set_mode_client(custom_mode=self._desired_mode)
 	    self._resend_rate.sleep()
 
