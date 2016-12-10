@@ -13,12 +13,16 @@ class SetpointManager:
         rospy.loginfo("[SetpointManager] SetpointManager initialized!")
             
     def _on_status(self, msg):
+	self._current_status = msg.status
         self._setpoint = msg.setpoint_pose
         self._setpoint_type = msg.setpoint_type
 
     def run(self):
         while not rospy.is_shutdown():
-            if self._setpoint_type is not None and self._setpoint_type == FlycoStatus.STATUS_SETPOINT_NAV:
+            if self._setpoint_type is not None and \
+	       self._current_status is not None and \
+	       self._current_status == FlycoStatus.STATUS_SETPOINT_NAV and \
+	       self._setpoint_type == FlycoStatus.SETPOINT_POS:
                 self._setp_pos_pub.publish(self._setpoint)
             self._setpoint_rate.sleep()
 
