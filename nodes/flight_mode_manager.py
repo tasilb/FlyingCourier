@@ -18,16 +18,16 @@ class FlightModeManager:
     def _on_state(self, msg):
         self._current_mode = msg.mavros_state.mode
         currentStatus = msg.status
-        if currentStatus == FlycoStatus.STATUS_FAULT or FlycoStatus.STATUS_LANDING:
+        if currentStatus == FlycoStatus.STATUS_FAULT or currentStatus == FlycoStatus.STATUS_LANDING:
             self._desired_mode = "AUTO.LAND"
         elif currentStatus == FlycoStatus.STATUS_SETPOINT_NAV:
             self._desired_mode = "OFFBOARD"
-        elif currentStatus == FlycoStatus.ACTUATION:
+        elif currentStatus == FlycoStatus.STATUS_ACUTATION:
             self._desired_mode = "POSCTL"
         self._mavros_set_state()
 
     def _mavros_set_state(self):
-	while self._current_mode != self._desired_mode:
+	while self._current_mode != self._desired_mode and self._desired_mode is not None:
             rospy.loginfo("[FlightModeManager] Requesting mode switch ({} to {})".format(self._current_mode, self._desired_mode))
 	    self._set_mode_client(custom_mode=self._desired_mode)
 	    self._resend_rate.sleep()

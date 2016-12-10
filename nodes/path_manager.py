@@ -47,6 +47,7 @@ class PathManager:
                 self._setpoint_cmd.setpoint_pose = self._goal_pose
                 self._flyco_cmd_pub.publish(self._setpoint_cmd)
         if self._completed_path:
+	    rospy.loginfo("[PathManager] Executing ending command (type {})".format(self._ending_cmd_type))
             self._flyco_cmd_pub.publish(self._ending_cmd)
 
     def run(self):

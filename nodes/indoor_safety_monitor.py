@@ -30,7 +30,8 @@ class IndoorSafetyMonitor:
 	msgPos = msg.local_pose.pose.position
 	msgPosStamp = msg.local_pose.header.stamp
 	currentPosition = np.array([msgPos.x, msgPos.y, msgPos.z, msgPosStamp.to_sec()])
-	self._validate_position_safety(currentPosition)
+	if not np.array_equal(self._last_position, currentPosition):
+	    self._validate_position_safety(currentPosition)
 	self._last_position = currentPosition
 
     def _validate_position_safety(self, currentPosition):
@@ -39,8 +40,11 @@ class IndoorSafetyMonitor:
 	    self._enter_failsafe()
 
     def _in_position_bounds(self, position):
-        positionInBounds = np.sum(position[:3] >= self._corner1) + \
-                           np.sum(position[:3] <= self._corner2) == 6
+	# y box extends in negative direction
+	positionCopy = np.copy(position)
+	positionCopy[1] = -1.0 * positionCopy[1]
+        positionInBounds = (np.sum(positionCopy[:3] >= self._corner1) + \
+                           np.sum(positionCopy[:3] <= self._corner2)) == 6
 	if not positionInBounds:
             rospy.loginfo("[IndoorSafetyMonitor] Local position is outside of safety area: {0} corner one: {1} corner 2: {2}."\
                       .format(position[:3], self._corner1, self._corner2))
@@ -48,7 +52,6 @@ class IndoorSafetyMonitor:
 
     def _in_differential_bounds(self, position):
 	if self._last_position is not None:
-
             rawDifferential = (position[:3] - self._last_position[:3]) / (position[3] - self._last_position[3])
             self._current_differential = self._alpha * self._current_differential + (1 - self._alpha) * rawDifferential
 	    validDifferentials = abs(self._current_differential) < self._max_differential
@@ -65,6 +68,7 @@ class IndoorSafetyMonitor:
 	rospy.loginfo("[IndoorSafetyMonitor] Entering failsafe mode {}".format(self._failsafe_mode))
         cmd = FlycoCmd()
         cmd.cmd = FlycoCmd.CMD_FAILSAFE
+
 	while self._current_mode != self._failsafe_mode:
             self._flyco_cmd_pub.publish(cmd)
 	    self._set_mode_client(custom_mode=self._failsafe_mode)
@@ -76,5 +80,5 @@ class IndoorSafetyMonitor:
 
 if __name__ == '__main__':
     rospy.init_node("flyco_indoor_safety_monitor", anonymous=False)
-    safetyMonitor = IndoorSafetyMonitor(-0.2, -0.2, -0.2, 2.0, 2.0, 2.0)
+    safetyMonitor = IndoorSafetyMonitor(-0.1, -0.1, -10.0, 2.0, 2.0, 2.0)
     safetyMonitor.run()

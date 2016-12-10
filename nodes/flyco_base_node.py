@@ -2,7 +2,7 @@
 
 import rospy
 from flyco.msg import FlycoStatus, FlycoCmd
-from mavros_msgs.msg import State, BatteryStatus
+from mavros_msgs.msg import State
 from geometry_msgs.msg import PoseStamped
 
 class FlycoBaseNode:
@@ -11,7 +11,6 @@ class FlycoBaseNode:
         self._status.status = FlycoStatus.STATUS_INIT
         self._publish_rate = rospy.Rate(50)
         self._mavros_state_sub = rospy.Subscriber("/mavros/state", State, self._on_state)
-        self._battery_sub = rospy.Subscriber("/mavros/battery", BatteryStatus, self._on_battery)
         self._local_position_sub = rospy.Subscriber("/mavros/local_position/pose", PoseStamped, self._on_pose)
         self._cmd_sub = rospy.Subscriber("/flyco/cmd", FlycoCmd, self._on_cmd)
         self._status_pub = rospy.Publisher("/flyco/main_status", FlycoStatus, queue_size=1)
@@ -25,16 +24,14 @@ class FlycoBaseNode:
     def _on_state(self, msg):
         self._status.mavros_state = msg
 
-    def _on_battery(self, msg):
-        self._status.battery = msg
-
     def _on_pose(self, msg):
         self._status.local_pose = msg
 
     def _on_cmd(self, msg):
         cmdType = msg.cmd
         if self._status.status == FlycoStatus.STATUS_FAULT:
-            rospy.loginfo("[FlycoBase] Currently in fault state, command rejected.")
+	    if cmdType != FlycoCmd.CMD_FAILSAFE:
+		rospy.loginfo("[FlycoBase] Currently in fault state, command rejected.")
             return
         elif cmdType == FlycoCmd.CMD_FAILSAFE:
             rospy.loginfo("[FlycoBase] Entering fault mode.")
@@ -51,6 +48,8 @@ class FlycoBaseNode:
         elif cmdType == FlycoCmd.CMD_ACTUATE:
             rospy.loginfo("[FlycoBase] Entering actuation mode.")
             self._status.status = FlycoStatus.STATUS_ACTUATION
+	else:
+	    rospy.loginfo("[FlycoBase] Invalid command")
 
 if __name__ == "__main__":
     rospy.init_node("flyco_base_node", anonymous=False)
