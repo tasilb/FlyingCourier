@@ -25,7 +25,6 @@ class PathManager:
     def _on_path(self, msg):
         rospy.loginfo("[PathManager] New path received!")
         self._setpoint_list = msg.path
-	print("new path length {}".format(len(self._setpoint_list)))
         self._setpoint_index = 0
         self._goal_pose = self._setpoint_list[self._setpoint_index]
         self._completed_path = False
@@ -35,9 +34,7 @@ class PathManager:
     def _on_status(self, msg):
         self._current_status = msg
         if self._has_arrived():
-	    print("has_arrived")
             self._setpoint_index += 1
-	    print("setpoint_index {}".format(self._setpoint_index))
             if self._setpoint_index >= len(self._setpoint_list):
 		self._completed_path = True
                 rospy.loginfo("[PathManager] Path complete.")
@@ -64,7 +61,7 @@ class PathManager:
         if self._current_status is not None and self._setpoint_list is not None:
             desiredPosition = self._goal_pose.pose.position
             desiredPosition = np.array([desiredPosition.x, desiredPosition.y, desiredPosition.z])
-            localPosition = self._current_status.setpoint_pose.pose.position
+            localPosition = self._current_status.local_pose.pose.position
             localPosition = np.array([localPosition.x, localPosition.y, localPosition.z])
             arrived = (np.linalg.norm(desiredPosition - localPosition) < self._max_norm)
         else:

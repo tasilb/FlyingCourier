@@ -23,11 +23,7 @@ class PathManagerTester:
 
         self._path = FlycoPath()
         self._path.path = tuple(self._setpoint_list)
-        self._path.ending_cmd = FlycoPath.CMD_LAND
-	print "Path:"
-	for p in self._path.path:
-	    print p.pose.position
-	print self._path.ending_cmd
+        self._path.ending_cmd = FlycoPath.CMD_ACTUATE
 
     def _on_status(self, msg):
         self._current_status = msg.status
@@ -35,11 +31,11 @@ class PathManagerTester:
         self._current_pose = msg.local_pose.pose.position
 
     def run(self):
+	while self._current_status != FlycoStatus.STATUS_SETPOINT_NAV:
+	    self._flyco_path_pub.publish(self._path)
         while not rospy.is_shutdown():
-	    if self._current_status != FlycoStatus.STATUS_SETPOINT_NAV:
-		self._flyco_path_pub.publish(self._path)
-            # print("[PATH TEST] Base status:")
-            # print(self._current_status)
+            print("[PATH TEST] Base status:")
+            print(self._current_status)
             print("[PATH TEST] Goal position:")
             print(self._current_destination)
             print("[PATH TEST] Local position:")
@@ -49,16 +45,9 @@ class PathManagerTester:
 if __name__ == "__main__":
     rospy.init_node("test_pm", anonymous=False)
     positions = np.array([0.0, 0.0, 1.0])
-    positions = np.vstack((positions, np.array([1.0, -1.0, 1.0])))
-    positions = np.vstack((positions, np.array([1.0, -1.0, 1.0])))
-    positions = np.vstack((positions, np.array([1.0, -1.0, 1.0])))
-    positions = np.vstack((positions, np.array([1.0, 0.0, 1.0])))
-    positions = np.vstack((positions, np.array([2.0, 0.0, 1.0])))
-    positions = np.vstack((positions, np.array([2.0, -2.0, 1.0])))
-    positions = np.vstack((positions, np.array([1.0, -2.0, 1.0])))
-    positions = np.vstack((positions, np.array([0.0, -2.0, 1.0])))
-    positions = np.vstack((positions, np.array([0.0, -1.0, 1.0])))
-    positions = np.vstack((positions, np.array([0.0, -0.0, 1.0])))
+    positions = np.vstack((positions, np.array([0.8, 0.0, 1.0])))
+    positions = np.vstack((positions, np.array([0.8, -0.8, 1.0])))
+    positions = np.vstack((positions, np.array([0.0, -0.8, 1.0])))
 
     tester = PathManagerTester(positions)
     tester.run()
