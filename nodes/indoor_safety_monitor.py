@@ -8,15 +8,17 @@ import numpy as np
 
 class IndoorSafetyMonitor:
     def __init__(self, x1, y1, z1, x2, y2, z2, failsafeMode="AUTO.LAND"):
-	self._max_differential = 10000
+	self._max_differential = 10000.0
         self._current_differential = 0
         self._alpha = .5 #differential smoothing
+        self._acceleration_window = .2
+        self._window_start = None
 	self._failsafe_mode = failsafeMode
 	self._corner1 = np.array([x1, y1, z1])
 	self._corner2 = np.array([x2, y2, z2])
 	self._current_mode = None
 	self._last_position = None
-
+        
 	rospy.loginfo("[IndoorSafetyMonitor] Waiting for service /mavros/set_mode to become available...")
 	rospy.wait_for_service("/mavros/set_mode")
 	self._set_mode_client = rospy.ServiceProxy("/mavros/set_mode", SetMode)
@@ -59,14 +61,18 @@ class IndoorSafetyMonitor:
             self._current_differential = self._alpha * self._current_differential + (1 - self._alpha) * rawDifferential
 	    validDifferentials = abs(self._current_differential) < self._max_differential
 	    differentialInBounds = np.sum(validDifferentials) == 3
-	    
-            if not differentialInBounds:
-                rospy.loginfo("[IndoorSafetyMonitor] Detected excessive position differential: {0} maximum differential: {1}"\
-                          .format(self._current_differential, self._max_differential))
-	    return differentialInBounds
-	else:
-	    return True
-
+            if differentialInBounds:
+                self._window_start = None
+                return True
+            else:
+                if self._window_start is None:
+                    self._window_start = rospy.time.now().to_sec()
+                    return True
+                elif (self._window_start - rospy.time.now().to_sec()) > self._acceleration_window:
+                    rospy.loginfo("[IndoorSafetyMonitor] Detected excessive position differential: {0} maximum differential: {1} for {2} sec"\
+                          .format(self._current_differential, self._max_differential, self.self._window_start - rospy.time.now().to_sec()))
+                    return False
+            return False #fail closed
     def _enter_failsafe(self):
 	rospy.loginfo("[IndoorSafetyMonitor] Entering failsafe mode {}".format(self._failsafe_mode))
         cmd = FlycoCmd()
