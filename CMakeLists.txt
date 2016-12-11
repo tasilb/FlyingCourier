@@ -154,6 +154,7 @@ install(PROGRAMS
   nodes/indoor_safety_monitor.py
   nodes/path_manager.py
   nodes/setpoint_manager.py
+  nodes/test_pm.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

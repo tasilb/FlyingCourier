@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import rospy
+import numpy as np
 from geometry_msgs.msg import PoseStamped
 from flyco.msg import FlycoStatus, FlycoCmd, FlycoPath
 
@@ -23,7 +24,8 @@ class PathManager:
 
     def _on_path(self, msg):
         rospy.loginfo("[PathManager] New path received!")
-        self._setpoint_list = msg
+        self._setpoint_list = msg.path
+	print("new path length {}".format(len(self._setpoint_list)))
         self._setpoint_index = 0
         self._goal_pose = self._setpoint_list[self._setpoint_index]
         self._completed_path = False
@@ -31,24 +33,27 @@ class PathManager:
         self._ending_cmd.cmd = self._ending_cmd_type
 
     def _on_status(self, msg):
-        self._current_status = msg.status
+        self._current_status = msg
         if self._has_arrived():
+	    print("has_arrived")
             self._setpoint_index += 1
+	    print("setpoint_index {}".format(self._setpoint_index))
             if self._setpoint_index >= len(self._setpoint_list):
+		self._completed_path = True
                 rospy.loginfo("[PathManager] Path complete.")
             else:
                 self._goal_pose = self._setpoint_list[self._setpoint_index]
                 rospy.loginfo("[PathManager] Heading to setpoint {}/{}".format(self._setpoint_index + 1, len(self._setpoint_list)))
 
     def _run_single_cycle(self):
-        if self._current_status is not None and self._setpoint_list is not None:
+        if self._completed_path:
+	    rospy.loginfo("[PathManager] Executing ending command (type {})".format(self._ending_cmd_type))
+            self._flyco_cmd_pub.publish(self._ending_cmd)
+        elif self._current_status is not None and self._setpoint_list is not None:
             fault = self._current_status.status == FlycoStatus.STATUS_FAULT
             if not fault and not self._completed_path and not self._same_goal():
                 self._setpoint_cmd.setpoint_pose = self._goal_pose
                 self._flyco_cmd_pub.publish(self._setpoint_cmd)
-        if self._completed_path:
-	    rospy.loginfo("[PathManager] Executing ending command (type {})".format(self._ending_cmd_type))
-            self._flyco_cmd_pub.publish(self._ending_cmd)
 
     def run(self):
         while not rospy.is_shutdown():
@@ -61,7 +66,7 @@ class PathManager:
             desiredPosition = np.array([desiredPosition.x, desiredPosition.y, desiredPosition.z])
             localPosition = self._current_status.setpoint_pose.pose.position
             localPosition = np.array([localPosition.x, localPosition.y, localPosition.z])
-            arrived = (np.norm(desiredPosition - localPosition) < self.max_norm)
+            arrived = (np.linalg.norm(desiredPosition - localPosition) < self._max_norm)
         else:
             arrived = False
 

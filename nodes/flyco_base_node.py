@@ -41,7 +41,7 @@ class FlycoBaseNode:
             self._status.status = FlycoStatus.STATUS_LANDING
         elif cmdType == FlycoCmd.CMD_SETPOINT_POS:
             rospy.loginfo("[FlycoBase] Entering setpoint navigation mode.")
-            rospy.loginfo("[FlycoBase] Desired setpoint: {}".format(msg.setpoint_pose))
+            rospy.loginfo("[FlycoBase] Desired setpoint: {}".format(msg.setpoint_pose.pose.position))
             self._status.status = FlycoStatus.STATUS_SETPOINT_NAV
             self._status.setpoint_type = FlycoStatus.SETPOINT_POS
             self._status.setpoint_pose = msg.setpoint_pose

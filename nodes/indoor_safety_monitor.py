@@ -8,7 +8,7 @@ import numpy as np
 
 class IndoorSafetyMonitor:
     def __init__(self, x1, y1, z1, x2, y2, z2, failsafeMode="AUTO.LAND"):
-	self._max_differential = 2
+	self._max_differential = 10000
         self._current_differential = 0
         self._alpha = .5 #differential smoothing
 	self._failsafe_mode = failsafeMode
@@ -30,7 +30,10 @@ class IndoorSafetyMonitor:
 	msgPos = msg.local_pose.pose.position
 	msgPosStamp = msg.local_pose.header.stamp
 	currentPosition = np.array([msgPos.x, msgPos.y, msgPos.z, msgPosStamp.to_sec()])
-	if not np.array_equal(self._last_position, currentPosition):
+	if self._last_position is not None and \
+	  currentPosition is not None and \
+	  not np.array_equal(self._last_position, currentPosition) and \
+	  currentPosition[3] - self._last_position[3] > 0:
 	    self._validate_position_safety(currentPosition)
 	self._last_position = currentPosition
 
@@ -80,5 +83,5 @@ class IndoorSafetyMonitor:
 
 if __name__ == '__main__':
     rospy.init_node("flyco_indoor_safety_monitor", anonymous=False)
-    safetyMonitor = IndoorSafetyMonitor(-0.1, -0.1, -10.0, 2.0, 2.0, 2.0)
+    safetyMonitor = IndoorSafetyMonitor(-0.3, -0.3, -10.0, 3.0, 3.0, 2.0)
     safetyMonitor.run()
