@@ -22,7 +22,7 @@ class FlightModeManager:
             self._desired_mode = "AUTO.LAND"
         elif currentStatus == FlycoStatus.STATUS_SETPOINT_NAV:
             self._desired_mode = "OFFBOARD"
-        elif currentStatus == FlycoStatus.STATUS_ACUTATION:
+        elif currentStatus == FlycoStatus.STATUS_ACTUATION:
             self._desired_mode = "POSCTL"
         self._mavros_set_state()
 
