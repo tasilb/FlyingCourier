@@ -8,7 +8,7 @@ import numpy as np
 
 class IndoorSafetyMonitor:
     def __init__(self, x1, y1, z1, x2, y2, z2, failsafeMode="AUTO.LAND"):
-	self._max_differential = 4.0
+	self._max_differential = 10000.0
         self._current_differential = 0
         self._alpha = .5 #differential smoothing
         self._acceleration_window = .2
@@ -66,15 +66,12 @@ class IndoorSafetyMonitor:
                 return True
             else:
                 if self._window_start is None:
-                    self._window_start = rospy.Time.now().to_sec()
+                    self._window_start = rospy.time.now().to_sec()
                     return True
-                elif (self._window_start - rospy.Time.now().to_sec()) > self._acceleration_window:
+                elif (self._window_start - rospy.time.now().to_sec()) > self._acceleration_window:
                     rospy.loginfo("[IndoorSafetyMonitor] Detected excessive position differential: {0} maximum differential: {1} for {2} sec"\
-                          .format(self._current_differential, self._max_differential, self.self._window_start - rospy.Time.now().to_sec()))
+                          .format(self._current_differential, self._max_differential, self.self._window_start - rospy.time.now().to_sec()))
                     return False
-		else:
-		    return True
-	    rospy.loginfo("[IndoorSafetyMonitor] Should never reach here")
             return False #fail closed
     def _enter_failsafe(self):
 	rospy.loginfo("[IndoorSafetyMonitor] Entering failsafe mode {}".format(self._failsafe_mode))

@@ -4,7 +4,9 @@ import rospy
 import numpy as np
 from geometry_msgs.msg import PoseStamped
 from flyco.msg import FlycoStatus, FlycoCmd, FlycoPath
-
+import mraa
+import time
+from datetime import datetime
 class PathManager:
     def __init__(self):
         self._max_norm = .2
@@ -38,6 +40,9 @@ class PathManager:
             if self._setpoint_index >= len(self._setpoint_list):
 		self._completed_path = True
                 rospy.loginfo("[PathManager] Path complete.")
+                rospy.loginfo("[PathManager] Dropping payload.")
+		self._dropPayload()
+		rospy.loginfo("[PathManager] Payload Dropped.")
             else:
                 self._goal_pose = self._setpoint_list[self._setpoint_index]
                 rospy.loginfo("[PathManager] Heading to setpoint {}/{}".format(self._setpoint_index + 1, len(self._setpoint_list)))
@@ -70,6 +75,16 @@ class PathManager:
         if arrived:
             rospy.loginfo("[PathManager] Arrived at setpoint!")
         return arrived
+
+    def _dropPayload(self):
+        x = mraa.Pwm(30)
+        x.period(2000)
+        x.enable(True)
+
+        x.pulsewidth_us(2550)
+        time.sleep(2)
+        x.pulsewidth_us(4450)
+        time.sleep(2)
 
     def _same_goal(self):
         statusGoal = self._current_status.setpoint_pose.pose.position
