@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   mavros
   rospy
   std_msgs
+  message_generation
   usb_cam
 )
 
@@ -19,7 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
 # Uncomment this if the package has a setup.py. This macro ensures
 # modules and global scripts declared therein get installed
 # See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
- catkin_python_setup()
+catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -46,11 +47,12 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+  FILES
+  FlycoStatus.msg
+  FlycoCmd.msg
+  FlycoPath.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -67,10 +69,12 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+  mavros_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -103,8 +107,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES flyco
-#  CATKIN_DEPENDS ar_track_alvar mavros rospy std_msgs usb_cam
+  LIBRARIES flyco
+  CATKIN_DEPENDS ar_track_alvar mavros rospy std_msgs usb_cam message_runtime
 #  DEPENDS system_lib
 )
 
@@ -119,18 +123,10 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-## Declare a C++ library
-# add_library(flyco
-#   src/${PROJECT_NAME}/flyco.cpp
-# )
-
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
 # add_dependencies(flyco ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Declare a C++ executable
-# add_executable(flyco_node src/flyco_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -150,10 +146,17 @@ include_directories(
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# install(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(PROGRAMS
+  nodes/airframe_tf_broadcaster.py
+  nodes/ar_cap.py
+  nodes/flight_mode_manager.py
+  nodes/flyco_base_node.py
+  nodes/indoor_safety_monitor.py
+  nodes/path_manager.py
+  nodes/setpoint_manager.py
+  nodes/test_pm.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables and/or libraries for installation
 # install(TARGETS flyco flyco_node
