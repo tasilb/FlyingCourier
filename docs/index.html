@@ -139,7 +139,7 @@ consumed a lot of debugging time. Not being familiar with the FCU was likely als
 <p>If we had more time, we would more closely investigate the cause of the FCU fault state and hopefully be able to resolve the issue within the firmware. We would also improve our motion capture system. The current implementation of our motion capture would not scale well, as the amount of memory required would increase linearly with the number of tags in use. It would be good to refactor our code so that it scales better. One approach would be to intelligently cache tag transformations based on the reported position so that far-away tags would not have to stay in memory. With regards to performance, we could further mitigate the effects of outliers from tracking errors by dropping out transformations with high variance from being averaged, or by using a random sampling technique such as RANSAC, or both. We could also explore the option of extending ar_track_alvar's bundle tracking implementation. We initially tried to treat our AR tag array as one large bundle, but the output was very erratic and unreliable.</p>
 <h3>Team</h3>
 <ul>
-  <li>David is a 4th year computer science undergrad</li>
+  <li>David is a 4th year CS undergrad</li>
   <li>Alex is a 4th year EECS undergrad</li>
   <li>Lucy is a 3rd year CS undergrad</li>
   <li>Vanessa is a 3rd year EECS undergrad</li>
