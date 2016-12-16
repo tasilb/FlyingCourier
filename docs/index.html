@@ -43,7 +43,7 @@
 <p>Implemented by David Tsai, Alex Kashi, Lucy Chen, Vanessa Salas</p>
 
 <h3>Introduction</h3>
-<p>Our goal was to design an autonomous quadrotor system to deliver a parcel to a specified destination. Using MAVROS, our quadcopter would seek and navigate to a user-defined sequence of waypoints. Because our system is intended for use in various indoor layouts, we are faced with the challenge of designing a system that localizes and navigates with limited modifications to the environment. Such a system could potentially be adapted for use in applications such as last-mile autonomous delivery, as well as extended-range manipulation and streamlined localization.</p>
+<p>Our goal was to design an autonomous quadrotor system to deliver a parcel to a specified destination. Using MAVROS, a ROS interface for the aerial vehicle protocol MAVLink, our quadcopter would seek and navigate to a user-defined sequence of waypoints. Because our system is intended for use in various indoor layouts, we are faced with the challenge of designing a system that localizes and navigates with limited modifications to the environment. Such a system could potentially be adapted for use in applications such as last-mile autonomous delivery, as well as extended-range manipulation and streamlined localization.</p>
 
 <h3>Design</h3>
 <h4>Quadcopter</h4>
@@ -55,11 +55,20 @@
 <p>Because an additional source of positioning information such as GPS, optical flow, or motion capture were not readily available to us, we also required that we have some way of localizing our robot that was software-oriented. For this, we designed our own motion capture system that works with the parts we already have. We based the system around an array of AR tags, for which there already exists a technique for extracting relative pose information. We combined it with our knowledge of rigid body
 transformations to produce a solution that is robust to a degree of occlusion and, to an extent, distance from the tags. We also required that our system operate with modal behavior according to a state machine. We also needed it to be easy to analyze and debug. Given these requirements, we used a mediator-style architecture in ROS. In our design, a base node publishes the status of the system with respect to its modal behavior, and each subcomponent node is responsible for taking actions to enforce the conditions of the particular state reported by the base node.</p>
 <p>As an example, if the safety monitor detects a position violation, it will request that the main status is changed to the fault state. As the setpoint manager sees the fault state, it will stop publishing setpoints to MAVROS. As the flight mode manager sees the fault state, it will continually attempt to set the flight mode in MAVROS to the specified failsafe mode.</p>
-<p>With this structure, subcomponents are able to operate independently of other subcomponents and simplify the execution model, as opposed to a monolithic timed loop that attempts to encompass all of the system's functionality. By changing the main status, the base node is able to indirectly control the system. This cost of this approach is an increase in verbosity and complexity, but it provides valuable composability and maintainability.</p>
+<p>With this structure, subcomponents are able to operate independently of other subcomponents and simplify the execution model, as opposed to a monolithic timed loop that attempts to encompass all of the system's functionality in a single, sequential chain of logic. By changing the main status, the base node is able to indirectly control the system. This cost of this approach is an increase in verbosity and complexity, but it provides valuable composability and maintainability.</p>
+<p>To accomplish our goals, we chose to make use of a few libraries, some of which have been mentioned already:</p>
+<ul>
+  <li><a href="http://wiki.ros.org/">ROS, a robotics-oriented IPC runtime</a></li>
+  <li><a href="http://wiki.ros.org/mavros">MAVROS, a ROS package for commmunicating with unmanned vehicles over MAVLink</a></li>
+  <li><a href="http://wiki.ros.org/ar_track_alvar">ar_track_alvar, a ROS package for detecting the pose of AR tags</a></li>
+  <li><a href="http://wiki.ros.org/usb_cam">usb_cam, a ROS package for interfacing with USB cameras</a></li>
+  <li><a href="http://wiki.ros.org/tf">tf, a ROS package that provides a universal interface for using spatial transformations</a></li>
+  <li><a href="http://iotdk.intel.com/docs/mraa/v0.9.6/">mraa, a library for accessing I/O pins on the Joule and other platforms</a></li>
+</ul>
 
 <h3>Implementation</h3>
 <h4>Quadcopter</h4>
-<p>For the quadcopter, our list of components includes a set of 920KV motors, propellors, four-cell lithium polymer batteries, a carbon fiber frame, a power distribution board, and the Pixhawk flight control unit (FCU). On the computational side, we used an Intel Joule single-board computer (SBC), a powered USB hub, a USB webcam, and a metal gear servo. The hub connected the FCU and camera to the SBC. Our system is connected as in the following diagram:</p>
+<p>For the quadcopter, our list of components includes a set of 30A ESCs, 920KV motors, propellors, four-cell lithium polymer batteries, a carbon fiber frame, a power distribution board, and the Pixhawk flight control unit (FCU). On the computational side, we used an Intel Joule single-board computer (SBC), a powered USB hub, a USB webcam, and a metal gear servo. The hub connected the FCU and camera to the SBC. Our system is connected as in the following diagram:</p>
 
 <div class=row>
   <div class="img-responsive">
@@ -68,13 +77,14 @@ transformations to produce a solution that is robust to a degree of occlusion an
 </div>
 <br><br>
 
-<h4>Localization</h4>
+<h4>Motion Capture Localization</h4>
 <p>The next component we implemented was our localization array. We printed out 100 19.5 cm AR tags and backed them together in a 10 by 10 grid with foamboard and specified one to be the origin tag. By measuring the distance between centers of tags, we computed the rigid body transformation \(g_{ot}\) between each tag and the origin tag. In our code, we cached these inter-array transformations, knowing that they were intended to be static. Another static item we cached was the transformation between the
-webcam's frame of reference and the FCU's frame of reference, \(g_{cf}\), as defined by a tf broadcaster we wrote to spatially represent our airframe in ROS. Then, to calculate the position of the robot relative to the origin tag (assuming the camera detects the tag), is \(g_{ot} g_{ct}^{-1} g_{cf}\), where \(g_{ct}\) is the transformation from the tag to the camera, as reported by, ar_track_alvar, the tag tracking ROS package we are using.<p>
+webcam's frame of reference and the FCU's frame of reference, \(g_{cf}\), as defined by a tf broadcaster we wrote to spatially represent our airframe in ROS. Then, to calculate the position of the robot relative to the origin tag (assuming the camera detects the tag), is \(g_{ot} g_{ct}^{-1} g_{cf}\), where \(g_{ct}\) is the transformation from the tag to the camera, as reported by, ar_track_alvar, the tag tracking ROS package we are using. We also included a launchpad area with
+several tags small enough such that our robot can get its position when grounded at that area using the same method. With the launchpad, we defined the lateral displacement similarly to the main array, but manually tuned the Z-axis translation to account for the fact that ar_track_alvar believes that the tag is 19.5 cm wide like the other tags.<p>
 <p>To improve the robustness of this system, we implemented a simple averaging step over all the tag transformations within a short period of time. By doing this, we mitigate the effects of outliers due to ar_track_alvar errors and prevent the system from failing if some of the tags within the camera's view are occluded. To implement this, we introduced two lists to simplify bookkeeping. Each list is 100 elements, with each index corresponding to a tag on our grid. One list contains
 the timestamp of the last time a tag was seen, and another contains the transformation from the FCU to the origin corresponding to that time. On every tf message, we lock our lists with a mutex, update the lists with timestamps and transformations, and then unlock it. Our localization loop, running at 10 Hz by default, acquires the lock and filters the timestamp list for indices that have been updated within the last 0.2 seconds. Then it creates a copy of the valid transformations and
 releases the lock for our update callback to continue updating the list. Locking these lists prevents valid transformations from being overwritten by the update callback to be something that doesn't correspond to the correct timestamp. Then, the loop proceeds to average the translations to obtain a final result, which it publishes to the FCU at "/mavros/mocap/pose."</p>
-<p>The current iteration of this algorithm works well due to the fact that we are dealing with only 100 tags. Bottlenecks at scale could include memory usage, as well as slowdowns in numpy's filtering method that we use to find valid transformations. In the future, the system could also be augmented in a number of ways to further increase robustness and will be discussed in a later section.
+<p>The current iteration of this algorithm works well due to the fact that we are dealing with only 100 tags. Bottlenecks at scale could include memory usage, as well as slowdowns in numpy's filtering method that we use to find valid transformations. In the future, the system could also be augmented in a number of ways to further increase robustness and will be discussed in a later section.</p>
 
 <h4>The "flyco" Package</h4>
 <p>Code specific to the operation of our quadcopter was placed in a ROS package called "flyco", an abbreviation of "Flying Courier". This implementation manifests itself in ROS in the following computation graph:</p>
@@ -86,7 +96,8 @@ releases the lock for our update callback to continue updating the list. Locking
 </div>
 <br><br>
 
-<p>The primary control mechanism of the system is the main status that flyco_base_node, the main node in our package, publishes to "/flyco/main_status".
+<p>The primary control mechanism of the system is the main status that flyco_base_node, the main node in our package, publishes to "/flyco/main_status". The main status encompasses both the FCU status from MAVROS, as well as the modal behavior that we would like to achieve in our system from the following state machine:</p>
+
 <div class=row>
   <div class="img-responsive">
     <img class=center-block src="state_machine.png" alt="">
@@ -94,36 +105,78 @@ releases the lock for our update callback to continue updating the list. Locking
 </div>
 <br><br>
 
+<p>The main status message contains a few key fields. It reports the system's status, the FCU's status, the current pose, and the position of the robot's current destination. Besides changes in the FCU status, the main status also changes when it is issued a command on "/flyco/cmd". As mentioned in the software design description, flyco_base_node serves as a dispatcher for the subcomponents subscribed to "/flyco/main_status".</p>
+<p>There are currently four subcomponents necessary to achieve our desired modal behavior:</p>
+
+<h5>flyco_flight_mode_manager</h5>
+<p>This node is in charge of making sure that the FCU is in the correct flight mode according to the main status. In general, radio-controlled aircraft have several different flight modes that represent varying levels of control over the aircraft. For example, a self-level mode is assistive and attempts to level the aircraft when the pilot releases the controls, whereas a rate mode would require the pilot to manually level the aircraft. In our case, the relevant flight modes for our
+FCU would be "MANUAL", "POSCTL", "AUTO.LAND", and "OFFBOARD". The FCU boots into "MANUAL" mode and expects pilot input on an RC channel. "POSCTL" and "AUTO.LAND" are automatic modes in which the FCU attempts to hold the aircraft at its current position and land the aircraft, respectively. "OFFBOARD" is the flight mode that allows the FCU to respond to setpoint commands that we can send from our SBC over a serial connection. flyco_flight_mode_manager uses a proxy to a MAVROS service at
+"/mavros/set_mode" that requests a change in flight modes from the FCU. Using this service, this node checks every main status update and makes sure that the flight mode reported by the FCU is appropriate for the current main status. If it isn't then it requests the change until it gets made. Aside from the FCU's internal failsafe system and our safety monitor, the flight mode manager is the only agent in the system that is capable of requesting a change in flight modes.
+
+<h5>flyco_setpoint_manager</h5>
+<p>This node is in charge of sending setpoint messages to the FCU through "/mavros/setpoint_position/local". It makes sure that the setpoint that the FCU receives always matches the destination listed in the main status as long as the main status says it should be navigating by setpoints. Another key role that this node plays is keeping the FCU in OFFBOARD mode for as long as it is required to navigate to a setpoint. The FCU has a safety feature that exits OFFBOARD mode and sets the flight mode to a failsafe mode if it has not received a setpoint message in 0.5 seconds. flyco_setpoint_manager not only gives the FCU directions, but also acts as a heartbeat to let the FCU know that things are fine.
+
+<h5>flyco_indoor_safety_monitor</h5>
+<p>This node is in charge of enforcing safety constraints in our system. There are currently two safety checks that the monitor performs on every status update. It checks to see if the reported local position exceeds some boundary and also if the reported position differential exceeds a bound determined by a weighted moving average of past position differentials. If it detects some violation, it sends a command to set the system into a fault state from which no additional commands can be sent to the base node. The safety monitor also attempts to change the flight mode to the failsafe mode when a violation occurs.
+
+<h5>flyco_path_manager</h5>
+<p>This node is in charge of navigating the robot through a given path of waypoints. It executes a 10 Hz loop that attempts to set the main status to navigate to a setpoint if it has received a path. It listens for a path to follow on "/flyco/path" in the form of a list of positions and overrides any existing path that it was following and attempts to follow the new one if it receives one. At every status update, it checks if the reported position is at its current destination. If it is,
+then it either sets the next waypoint in the path as its destination if there are more waypoints remaining, or drops the payload if there are no more.
+
+<h4>Operation</h4>
+<p>To use the system, the quadcopter has to start grounded over the launchpad area of our AR tag array such that the small tags are in view of the camera. Attach your pacakge to the hook on the servo on the side of the quadcopter. From there, it needs to have its battery connected. With all the components powered up, log into the SBC over SSH using its private network. You will then have to log in as root to be able to access hardware connected to the SBC. There are two main launch files,
+"mavros.launch" and "flyco_bringup.launch", both of which need to be launched as root. "mavros.launch" starts the nodes used for our motion capture solution, including usb_cam, ar_track_alvar, our tf broadcaster, and our position calculator. It also launches a MAVROS node that consumes the motion capture output and begins publishing its internal status and accepting commmands. "flyco_bringup.launch" starts the base node, as well as the four subcomponents mentioned prior. To issue a command to the robot, publish a FlycoPath message consisting of a list of PoseStamped messages to "/flyco/path", either with rostopic pub or with your own code. The robot should proceed to execute the path command.</p>
 
 <h3>Results</h3>
 <p>The high level planning component of our project was very successful. The motion capture solution was accurate, the path navigation issued the correct commands, including the payload drop, at the correct locations, and the safety monitor, while on the conservative side, executed the failsafe procedures in the right conditions. Our software architecture allowed us to analyze and test components individually to get the desired system behavior. Our software interface to the quadcopter was also successful, as we were able to take off and land with MAVROS, albeit with lateral drift. Where we fell short was getting the system to fly while using our motion capture system. We had some doubts about the effectiveness of the camera in tracking AR markers through takeoff, but that was ultimately overshadowed by an issue at the firmware level in which the FCU immediately entered a fault state with some unlabeled behavior as soon as it was armed. Despite this, we are confident that the system is close to correct and functional.</p>
 
+<a href="https://drive.google.com/file/d/0Bw_0mBWVP4jkNy1YQV9PSGdZcEE/view">Check out a demo of what we have in this video!</a>
+
+<h3>Conclusion</h3>
+<p>Aside from getting our system in the air, we achieved good results. The quadcopter build was clean and also very powerful, and the software was easy to reason about and refine. We were able to cover and verify much of our expected modal behavior. Most of our difficulties were due to being unfamiliar with the FCU and how it interacts with MAVROS and the rest of our system. We improperly assumed some things about the FCU, such as its capabilities and behaviors out of the box, which
+consumed a lot of debugging time. Not being familiar with the FCU was likely also what kept us from finishing the project as we described in the results.</p>
+
+<p>If we had more time, we would more closely investigate the cause of the FCU fault state and hopefully be able to resolve the issue within the firmware. We would also improve our motion capture system. The current implementation of our motion capture would not scale well, as the amount of memory required would increase linearly with the number of tags in use. It would be good to refactor our code so that it scales better. One approach would be to intelligently cache tag transformations based on the reported position so that far-away tags would not have to stay in memory. With regards to performance, we could further mitigate the effects of outliers from tracking errors by dropping out transformations with high variance from being averaged, or by using a random sampling technique such as RANSAC, or both. We could also explore the option of extending ar_track_alvar's bundle tracking implementation. We initially tried to treat our AR tag array as one large bundle, but the output was very erratic and unreliable.</p>
+<h3>Team</h3>
+<ul>
+  <li>David is a 4th year computer science undergrad</li>
+  <li>Alex is a 4th year EECS undergrad</li>
+  <li>Lucy is a 3rd year CS undergrad</li>
+  <li>Vanessa is a 3rd year EECS undergrad</li>
+</ul>
+
+<h3>Resources</h3>
+<h4>Images</h4>
 <div class=row>
   <div class="img-responsive">
-    <img class=center-block src="video" alt="">
+    <img class=center-block src="quad_on_grid.jpeg" alt="">
   </div>
 </div>
 <br><br>
 
-<h3>Conclusion</h3>
-<p></p>
+<div class=row>
+  <div class="img-responsive">
+    <img class=center-block src="quad_on_desk.jpg" alt="">
+  </div>
+</div>
+<br><br>
 
-<h3>Team</h3>
-
-
-<h3>Reference Material</h3>
+<h4>Components</h4>
 <ul>
-  <li><a href="http://images01.military.com/media/news/people/army-navy-game1-600x400.jpg">Cadets (Beat Navy!)</a></li>
-  <li><a href="https://www.kendo-fik.org/english-page/english-page2/pic/kendo6-7dan-kata.JPG">Kendo practitioners</a></li>
-  <li><a href="http://edc.h-cdn.co/assets/15/06/980x490/landscape_nrm_1422911693-01-kitchen-g475.jpg">Kitchen</a></li>
-  <li><a href="http://www.santambroeus.com/images/coffee_bar_loews_gallery_02.jpg">Coffee shop</a></li>
+  <li><a href="https://hobbyking.com/en_us/xrotor-30a-micro-2-4s-blheli.html">Hobbywing XRotor Micro 30A ESC</a></li>
+  <li><a href="https://hobbyking.com/en_us/turnigy-talon-carbon-fiber-quadcopter-frame.html">Turnigy Talon Frame</a></li>
+  <li><a href="https://www.amazon.com/Anker-Charging-Adapter-Included-VL812-B2/dp/B014ZQ07NE/ref=sr_1_9?ie=UTF8&qid=1481857959&sr=8-9&keywords=usb+hub+3.0+powered">12V Powered USB Hub</a></li>
+  <li><a href="https://hobbyking.com/en_us/zippy-flightmax-5000mah-4s1p-30c.html">Zippy Flightmax 5000mAh 30C 4S Battery</a></li>
+  <li><a href="https://hobbyking.com/en_us/rhino-2150mah-4s-14-8v-30c-lipoly-pack.html">RHINO 2150mAh 4S 30C Battery</a></li>
+  <li><a href="https://www.fasttech.com/products/5493500">5-in-1 Anti-Vibration Plate for PX4 Flight Controller</a></li>
+  <li><a href="http://www.banggood.com/Gemfan-9_4x5-9450-Carbon-Fiber-Multirotor-Self-Lock-Propellers-CWCCW-p-974634.html">9450 Propellors</a></li>
+  <li><a href="http://www.banggood.com/JX-PDI-6221MG-20KG-Large-Torque-Digital-Coreless-Servo-For-RC-Model-p-973947.html?rmmds=search">JX PDI-6221MG 20KG Standard Servo</a></li>
+  <li><a href="https://hobbyking.com/en_us/multistar-elite-2216-920kv-multirotor-motor-set-2xcw-2xccw.html">Multistar Elite 2216 920KV Motors</a></li>
+  <li><a href="http://www.newegg.com/Product/Product.aspx?Item=9SIA2F84VV4380&cm_re=joule_570x-_-13-121-832-_-Product">Intel Joule 570x</a></li>
+  <li><a href="http://www.banggood.com/Pixhawk-PX4-2_4_8-Flight-Controller-32-Bit-ARM-PX4FMU-PX4IO-Combo-for-Multicopters-p-1040416.html?rmmds=cart">Pixhawk PX4 2.4.8 Flight Controller</a></li>
 </ul>
+<h4>Code</h4>
+<p>Our code is on <a href="https://github.com/tasilb/FlyingCourier">Github!</a>
+
 </body>
 </html>
-
-localization improvements
-- ransac
-- dropout
-- refactor for scale
-- smart caching based on nearby tags
-- upgrade bundle tracking in alvar
