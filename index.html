@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Flying Courier</title>
+<style>
+
+  body {
+    background-color: #99ffff
+    font-family: Serif;
+    margin: auto;
+    padding: 100px;
+    padding-top: 30px;
+    padding-bottom: 30px;
+  }
+
+  .center{
+    text-align: center;
+  }
+
+
+</style>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+</head>
+
+<body>
+<h1>Flying Courier</h1>
+<p>Final project of EE 106A, as instructed by Prof. R. Bajcsy</p>
+<p>Implemented by David Tsai, Alex Kashi, Lucy Chen, Vanessa Salas</p>
+
+<h3>Introduction</h3>
+<p>Our goal was to design an autonomous quadrotor system to deliver a parcel to a specified destination. Using MAVROS, our quadcopter would seek and navigate to a user-defined sequence of waypoints. Because our system is intended for use in various indoor layouts, we are faced with the challenge of designing a system that localizes and navigates with limited modifications to the environment. Such a system could potentially be adapted for use in applications such as last-mile autonomous delivery, as well as extended-range manipulation and streamlined localization.</p>
+
+<h3>Design</h3>
+<h4>Quadcopter</h4>
+<p>We wanted our robot to support both a powerful onboard computer, as well as a large payload. Modifying a ready-to-fly quadcopter would be a risky investment, as modifications are usually unsupported and may have compatibility issues. We decided to go with a custom quadcopter build in a "+" configuration (one motor on each side, one in front, one in back), with motors, propellors, and batteries specced to support approximately 2.5 kilograms fully assembled and loaded.</p>
+<p>The electrical system was designed to be compact and reduce wire clutter. The drawback to this approach was that it was a little harder to investigate the system to debug power issues. Eventually we moved more components to the 5 and 12 volt rails on our power distribution board to improve stability.</p>
+<p>For a simple proof of concept, we should have opted for a less powerful design. Prototyping with as much power as we did was a liability for little tangible benefit. However, because our goal was a full implementation on a limited budget, we decided that the risk was acceptable.</p>
+
+<div class=row>
+  <div class="img-responsive">
+    <img class=center-block src="hardware_schematic.jpg" alt="">
+  </div>
+</div>
+<br><br>
+
+<h4>Software</h4>
+<p>We required that our system operate with modal behavior according to a state machine.</p>
+
+<div class=row>
+  <div class="img-responsive">
+    <img class=center-block src="state_machine.jpg" alt="">
+  </div>
+</div>
+<br><br>
+
+<p>We also needed it to be easy to analyze and debug. Given these requirements, we used a mediator-style architecture in ROS. In our design, a base node publishes the status of the system with respect to its modal behavior, and each subcomponent node is responsible for taking actions to enforce the conditions of the particular state reported by the base node.</p>
+
+<div class=row>
+  <div class="img-responsive">
+    <img class=center-block src="computation_graph.jpg" alt="">
+  </div>
+</div>
+<br><br>
+
+<p>As an example, if the safety monitor detects a position violation, it will request that the main status is changed to the fault state. As the setpoint manager sees the fault state, it will stop publishing setpoints to MAVROS. As the flight mode manager sees the fault state, it will continually attempt to set the flight mode in MAVROS to the specified failsafe mode.</p>
+<p>With this structure, subcomponents are able to operate independently of other subcomponents. By changing the main status, the base node is able to indirectly control the system. This cost of this approach is an increase in verbosity and complexity, but it provides valuable composability and maintainability.</p>
+
+<h3>Implementation</h3>
+<p></p>
+
+<h3>Results</h3>
+<p>The high level planning component of our project was very successful. The motion capture solution was accurate, the path navigation issued the correct commands, including the payload drop, at the correct locations, and the safety monitor, while on the conservative side, executed the failsafe procedures in the right conditions. Our software architecture allowed us to analyze and test components individually to get the desired system behavior. Our software interface to the quadcopter was also successful, as we were able to take off and land with MAVROS, albeit with lateral drift. Where we fell short was getting the system to fly while using our motion capture system. We had some doubts about the effectiveness of the camera in tracking AR markers through takeoff, but that was ultimately overshadowed by an issue at the firmware level in which the FCU immediately entered a fault state with some unlabeled behavior as soon as it was armed. Despite this, we are confident that the system is close to correct and functional.</p>
+<div class=row>
+  <div class="img-responsive">
+    <img class=center-block src="toy_leaves.jpg" alt="">
+  </div>
+</div>
+<br><br>
+<div class=row>
+  <div class="img-responsive">
+    <img class=center-block src="toy_loews.jpg" alt="">
+  </div>
+</div>
+<br><br>
+<div class=row>
+  <div class="img-responsive">
+    <img class=center-block src="toy_dojo.jpg" alt="">
+  </div>
+</div>
+<br><br>
+
+<h3>Conclusion</h3>
+<p>Perspective is a very powerful tool, and it was an interesting experience to taxidermy various scenes!</p>
+
+<h3>Team</h3>
+
+
+<h3>Reference Material</h3>
+<ul>
+  <li><a href="http://images01.military.com/media/news/people/army-navy-game1-600x400.jpg">Cadets (Beat Navy!)</a></li>
+  <li><a href="https://www.kendo-fik.org/english-page/english-page2/pic/kendo6-7dan-kata.JPG">Kendo practitioners</a></li>
+  <li><a href="http://edc.h-cdn.co/assets/15/06/980x490/landscape_nrm_1422911693-01-kitchen-g475.jpg">Kitchen</a></li>
+  <li><a href="http://www.santambroeus.com/images/coffee_bar_loews_gallery_02.jpg">Coffee shop</a></li>
+</ul>
+</body>
+</html>
